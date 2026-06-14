@@ -49,6 +49,12 @@ brew services start postgresql@16
 
 Se o role `postgres` ja existir, o ultimo comando pode retornar erro e pode ser ignorado.
 
+Se voce ainda nao tiver a ferramenta do EF Core instalada:
+
+```bash
+dotnet tool install --global dotnet-ef --version "8.*"
+```
+
 ## Configuracao Local
 
 A connection string de desenvolvimento esta em:
@@ -97,7 +103,44 @@ https://localhost:7088/swagger
 http://localhost:5088/swagger
 ```
 
-Em ambiente `Development`, a API cria o schema do banco automaticamente com `EnsureCreatedAsync()`.
+Antes de usar endpoints que acessam persistencia, aplique as migrations no banco.
+
+## EF Core Migrations
+
+As migrations ficam na camada Infrastructure:
+
+```txt
+src/AuthService.Infrastructure/Persistence/Migrations/
+```
+
+Criar uma nova migration:
+
+```bash
+dotnet ef migrations add NomeDaMigration \
+  --project src/AuthService.Infrastructure/AuthService.Infrastructure.csproj \
+  --startup-project src/AuthService.Api/AuthService.Api.csproj \
+  --output-dir Persistence/Migrations
+```
+
+Aplicar migrations no banco configurado em `ConnectionStrings:AuthDb`:
+
+```bash
+dotnet ef database update \
+  --project src/AuthService.Infrastructure/AuthService.Infrastructure.csproj \
+  --startup-project src/AuthService.Api/AuthService.Api.csproj
+```
+
+Listar migrations:
+
+```bash
+dotnet ef migrations list \
+  --project src/AuthService.Infrastructure/AuthService.Infrastructure.csproj \
+  --startup-project src/AuthService.Api/AuthService.Api.csproj
+```
+
+Este projeto nao usa `EnsureCreatedAsync()`. O schema deve ser criado e evoluido por migrations explicitas.
+
+Se o banco local foi criado anteriormente com `EnsureCreatedAsync()`, ele pode ter tabelas sem historico de migrations. Nesse caso, use um banco novo para desenvolvimento ou avalie uma estrategia de baseline antes de aplicar migrations em um banco com dados.
 
 ## Endpoints
 
@@ -135,7 +178,6 @@ dotnet test AuthService.sln
 
 ## Proximos Passos
 
-- Substituir `EnsureCreatedAsync()` por migrations EF Core.
 - Adicionar testes de Application e Integration.
 - Estruturar codigos de erro no `Result`.
 - Adicionar Docker Compose para PostgreSQL.
